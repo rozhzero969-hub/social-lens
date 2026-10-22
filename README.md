@@ -1,73 +1,64 @@
 # Social Lens
 
-A quieter way to keep up with TikTok and Instagram. A responsive Next.js app with a polished dashboard, account controls, saved profiles, evidence-backed reports, notifications, bookmarks and privacy preferences.
+Your own social space for TikTok and Instagram profiles, saved content, reports and notifications.
 
-## Current status
+**Live app:** https://rozhzero969-hub.github.io/social-lens/
 
-**Working local alpha; live integrations are not activated.** The entire interface can be explored in a labeled preview workspace. Preview changes stay in this browser. Signed-in workspaces use Supabase with row-level security, without sample records.
+## What works now
 
-- Public repository: https://github.com/rozhzero969-hub/social-lens
-- Interactive GitHub Pages preview: https://rozhzero969-hub.github.io/social-lens/ (sample data stored in your browser; live monitoring is not activated).
-- New Supabase organization: **Social Lens**, ID `llhwliqrcgxmjylqkqen`.
-- The organization creation command succeeded, but the existing CLI and connector authorization cannot create a project in that organization. No live database was provisioned or linked; the browser is signed out. An authenticated owner must authorize the new organization before project creation can finish.
-- TikTok and Instagram connections need registered developer apps, credentials, redirect URLs, permissions and platform approval. They do not work until these are supplied.
-- AI summaries need an OpenAI API key and model configuration; otherwise reports use a deterministic factual template.
-- Email delivery needs Resend configuration. No emails have been sent during implementation.
-- Background checks run only after a host and scheduler are configured. GitHub Actions includes the worker schedule, disabled until `APP_URL` is set.
-- Public profiles are saved as links. Username monitoring, stories, follower identities, downloads and private activity are not advertised as working.
+- Sign-up, email confirmation, sign-in and password recovery through Supabase Auth.
+- Sign-in is required before opening a workspace. There are no demo accounts or seeded activity. Old preview data is discarded.
+- User-owned profile links, bookmarks, collections and report preferences persist in Supabase.
+- Row-level security isolates each user's data; browser clients cannot forge connected accounts or activity records.
+- Original Social Lens logo, browser icon, home-screen icons and notification badge.
+- Readable light and dark themes, responsive navigation and mobile layouts.
+- Installable web app with a standalone window and a cached public app shell. Private data and authentication responses are never cached by the service worker.
+- Opt-in browser notifications for incoming account changes while the app is open, with quiet hours, digest preferences and branded notification icons.
 
-## Run locally
+## Database
 
-Requires Node.js 24 and pnpm 11.25.0.
+The dedicated **Social Lens** free organization (`llhwliqrcgxmjylqkqen`) now contains the live **social-lens** project (`vpzplgivfyigxdiojovy`). Its database schema and authenticated app operations have been applied. The existing Ricotta Orders project was not changed.
+
+The GitHub Pages build connects directly to Supabase Auth and authorized database operations using a publishable browser key. Privileged internal helpers remain restricted to the server role. Repository variables supply the project URL and publishable key at build time; no server key is placed in the browser or committed to this repository.
+
+## Still requires external setup
+
+**Saving a profile link does not authorize or monitor its social account.** Live TikTok/Instagram connections remain disabled until registered developer applications, approved scopes and a secure OAuth backend host are configured. This is clearly shown in the connection dialog. No platform credentials, approval or monitoring access are simulated.
+
+Scheduled monitoring, AI reports and email delivery need a deployed worker and provider credentials. Background push notifications when the app is fully closed need a push subscription and delivery service; the service worker receiver is prepared, but background delivery is not active. Browser alerts currently work while the app is open.
+
+## Local development
+
+Use Node.js 24 and pnpm 11.25.0. Copy `.env.example` to `.env.local` and configure the Supabase URL and publishable key from the project's dashboard. Leave server-only credentials out of public variables.
 
 ```sh
 pnpm install
-cp .env.example .env.local
 pnpm dev
+pnpm test
+pnpm build
+pnpm build:pages
 ```
 
-Open http://localhost:3000. Blank environment variables leave the app in preview mode. Do not enter secrets in public variables.
+`pnpm build:pages` exports the authenticated app at `/social-lens/` into `.local/pages-build/out`. The GitHub quality-check workflow tests, builds and publishes that artifact to Pages.
 
-### Interface previews
+## App installation
 
-![Social Lens desktop dashboard](docs/screenshots/desktop.png)
+- iPhone/iPad: Safari → Share → Add to Home Screen.
+- Android/Chrome: browser menu → Install app / Add to Home Screen.
+- Mac/Safari: File → Add to Dock.
+- Desktop Chrome/Edge: install button or the browser install menu.
 
-[Phone layout](docs/screenshots/mobile.png)
+Use the app's own install control for device guidance. Installation does not automatically grant notification permission. Existing shortcuts may need to be removed and re-added to refresh their saved icon.
 
-```sh
-pnpm test        # monitoring, timezone, parsing, encryption and real PostgreSQL RLS tests
-pnpm build      # production compilation and TypeScript checks
-pnpm start      # serve the production build
-```
+## Code structure
 
-## Complete Supabase setup
+- `components/auth-screen.tsx`: authentication and password recovery.
+- `components/dashboard.tsx`: signed-in workspace and responsive views.
+- `components/logo.tsx`, `public/icons/`: original branding and app icons.
+- `lib/client-actions.ts`: authenticated client operations with input validation.
+- `lib/monitoring.ts`: baseline detection, duplicate suppression and timezone handling.
+- `lib/adapters.ts`, `app/api/`: future server-hosted OAuth, synchronization and delivery.
+- `supabase/migrations/`: database structure, ownership policies and restricted operations.
+- `public/manifest.webmanifest`, `public/sw.js`: app installation, safe shell caching and notification rendering.
 
-1. Sign in to Supabase and grant the existing integration access to the new **Social Lens** organization, or use an owner-authorized CLI session. The existing `ricotta-orders` project was not modified.
-2. Create a project in that organization. Choose a free plan if available; do not accept paid compute without agreeing to its quote.
-3. Link the checkout with `supabase link --project-ref YOUR_PROJECT_REF`, inspect tables, and apply `supabase db push`. The checked-in initial migration has been exercised against embedded PostgreSQL. Run Supabase security and performance advisors on the actual project after applying it.
-4. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, and the server-only `SUPABASE_SECRET_KEY` in `.env.local` and hosting secrets.
-5. Set the Supabase Auth site URL to the deployed HTTPS origin. Allow that origin and `/reset-password` as redirect destinations. Keep email confirmation enabled. Set up a production SMTP provider before a public launch.
-6. Add GitHub Actions secrets `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, and repository variable `SUPABASE_PROJECT_ID` to enable the manual database deployment workflow. Restrict the token to this new project.
-
-## Platform setup
-
-See [the capability matrix](docs/platform-capabilities.md) and [deployment instructions](docs/deployment.md). The app never requests a user's social password. The only OAuth scopes are approved profile/video permissions, separately per platform. A first sync creates a baseline without alerting on old posts. Counts never identify individual followers.
-
-## Architecture
-
-- `components/dashboard.tsx`: responsive interactive workspace, seven views, real and preview modes.
-- `lib/platforms.ts`: capability gating, username and saved-link validation.
-- `lib/monitoring.ts`: snapshot comparison, local report scheduling and quiet hours.
-- `lib/adapters.ts`: distinct official TikTok and Instagram OAuth, profile and media adapters.
-- `lib/crypto.ts`: authenticated AES-256-GCM token encryption.
-- `lib/services.ts`: sync and evidence-grounded reporting.
-- `app/api/`: authenticated user actions, OAuth callbacks, health and worker endpoints.
-- `supabase/migrations/`: tenant-owned public records; internal credentials, snapshots and job queue in a private schema. Privileged RPCs are denied to browser roles.
-- `.github/workflows/`: quality checks, manual database deployments, and an authenticated worker tick every 15 minutes. Individual accounts target hourly checks. GitHub schedules can be delayed; precise delivery times are not guaranteed.
-- `scripts/build-pages.mjs`: exports the same dashboard for GitHub Pages in preview mode, without server routes or live credentials. The Pages workflow publishes the built app rather than rendering this README.
-
-## Production limitations
-
-This is an alpha requiring deployment and live access tests. Provider adapters have not been exercised with real authorized TikTok/Instagram accounts. Verify exact permissions, fields, pagination, refresh, revocation, rate limits, account eligibility and retention obligations during app approval. Current adapters read the latest 20 TikTok videos / 25 Instagram media items per check; high-volume accounts can exceed this window. The initial beta must remain capped until paginated reconciliation and real quotas are tested.
-
-Weekly reports, profile sharing invitations, report chat, push notifications, metric threshold alert rules, collection management, advanced report filters, per-post engagement history, provider deletion webhooks and a dedicated operational dashboard remain follow-up work. The current implementation provides daily reports, follower count changes, content/profile changes within approved scopes, and a basic scheduled worker. Do not call this production-ready or promise uninterrupted monitoring.
+See [deployment details](docs/deployment.md) and [platform capabilities](docs/platform-capabilities.md) for operational requirements.
