@@ -18,7 +18,8 @@ export async function syncProfile(profile: Profile & { user_id: string }) {
   try {
     if (
       credentials.expires_at &&
-      new Date(credentials.expires_at).getTime() < Date.now() + 86400000
+      new Date(credentials.expires_at).getTime() <
+        Date.now() + (profile.platform === 'tiktok' ? 3600000 : 86400000)
     ) {
       tokens = await refreshTokens(profile.platform, tokens);
       checked(

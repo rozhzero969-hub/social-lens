@@ -27,6 +27,12 @@ pnpm dev
 
 Open http://localhost:3000. Blank environment variables leave the app in preview mode. Do not enter secrets in public variables.
 
+### Interface previews
+
+![Social Lens desktop dashboard](docs/screenshots/desktop.png)
+
+[Phone layout](docs/screenshots/mobile.png)
+
 ```sh
 pnpm test        # monitoring, timezone, parsing, encryption and real PostgreSQL RLS tests
 pnpm build      # production compilation and TypeScript checks

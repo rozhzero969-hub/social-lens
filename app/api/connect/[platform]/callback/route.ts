@@ -12,15 +12,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ plat
     if (!['instagram', 'tiktok'].includes(platform)) throw new Error('Unsupported platform');
     const cookie = req.cookies.get(`sl_oauth_${platform}`)?.value;
     if (!cookie) throw new Error('Connection session expired. Please try again.');
-    const s = decrypt<{ userId: string; state: string; verifier: string; issuedAt: number }>(
-      cookie,
-    );
+    const s = decrypt<{ userId: string; state: string; issuedAt: number }>(cookie);
     if (s.state !== req.nextUrl.searchParams.get('state') || Date.now() - s.issuedAt > 600000)
       throw new Error('Connection session expired.');
     const code = req.nextUrl.searchParams.get('code');
     if (!code || req.nextUrl.searchParams.has('error'))
       throw new Error('Authorization was not completed.');
-    const tokens = await exchangeCode(platform as Platform, code, s.verifier);
+    const tokens = await exchangeCode(platform as Platform, code);
     const fresh = await fetchSnapshot(platform as Platform, tokens);
     const db = adminClient();
     const { data } = checked(

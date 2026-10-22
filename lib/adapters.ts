@@ -18,11 +18,12 @@ export async function platformFetch(url: string, init?: RequestInit) {
   const body = await response.json();
   if (
     !response.ok ||
+    typeof body.error === 'string' ||
     (body.error?.code && body.error.code !== 'ok') ||
     (body.error?.message && body.error.code !== 'ok')
   )
     throw new Error(
-      response.status === 401
+      response.status === 401 || body.error?.code === 190 || body.error === 'invalid_grant'
         ? 'Connection expired. Reconnect your account.'
         : 'The platform could not complete this request. Try again later.',
     );
@@ -41,7 +42,7 @@ export function platformReady(p: Platform) {
 export function callbackUrl(p: Platform) {
   return `${process.env.APP_URL}/api/connect/${p}/callback`;
 }
-export function authorizationUrl(p: Platform, state: string, challenge: string) {
+export function authorizationUrl(p: Platform, state: string) {
   const url = new URL(
     p === 'tiktok'
       ? 'https://www.tiktok.com/v2/auth/authorize/'
@@ -55,8 +56,6 @@ export function authorizationUrl(p: Platform, state: string, challenge: string) 
           response_type: 'code',
           redirect_uri: callbackUrl(p),
           state,
-          code_challenge: challenge,
-          code_challenge_method: 'S256',
         }
       : {
           client_id: process.env.INSTAGRAM_CLIENT_ID!,
@@ -68,7 +67,7 @@ export function authorizationUrl(p: Platform, state: string, challenge: string) 
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   return url.toString();
 }
-export async function exchangeCode(p: Platform, code: string, verifier: string): Promise<Tokens> {
+export async function exchangeCode(p: Platform, code: string): Promise<Tokens> {
   if (p === 'tiktok')
     return platformFetch('https://open.tiktokapis.com/v2/oauth/token/', {
       method: 'POST',
@@ -79,7 +78,6 @@ export async function exchangeCode(p: Platform, code: string, verifier: string):
         code,
         grant_type: 'authorization_code',
         redirect_uri: callbackUrl(p),
-        code_verifier: verifier,
       }),
     });
   const short = await platformFetch('https://api.instagram.com/oauth/access_token', {

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createHash } from 'node:crypto';
 import { requireUser, fail } from '@/lib/server';
 import { encrypt, randomBytes } from '@/lib/crypto';
 import { authorizationUrl, platformReady } from '@/lib/adapters';
@@ -21,12 +20,10 @@ export async function POST(
         { status: 503 },
       );
     const state = randomBytes(24).toString('hex');
-    const verifier = randomBytes(32).toString('base64url');
-    const challenge = createHash('sha256').update(verifier).digest('base64url');
-    const r = NextResponse.json({ url: authorizationUrl(platform as Platform, state, challenge) });
+    const r = NextResponse.json({ url: authorizationUrl(platform as Platform, state) });
     r.cookies.set(
       `sl_oauth_${platform}`,
-      encrypt({ userId: user.id, state, verifier, issuedAt: Date.now() }),
+      encrypt({ userId: user.id, state, issuedAt: Date.now() }),
       {
         httpOnly: true,
         secure: process.env.APP_URL?.startsWith('https://'),
