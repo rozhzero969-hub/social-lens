@@ -22,6 +22,19 @@ test('signed-in clients can save their own real links without forging connection
     `insert into public.profiles(user_id,platform,username,display_name,kind,status,alerts) values('${alice}','instagram','my.account','my.account','saved','unsupported',false) returning id`,
   );
   const id = saved.rows[0].id;
+  // Separate authenticated transactions represent devices using the same account.
+  await db.exec(
+    `begin;insert into public.bookmarks(user_id,title,url,platform,collection) values('${alice}','My post','https://www.instagram.com/p/ABC/','instagram','Profile:instagram:my.account');update public.preferences set language='Kurdish' where user_id='${alice}';commit;reset role;`,
+  );
+  await db.exec(`set role authenticated;set request.jwt.claim.sub='${alice}';begin;`);
+  assert.equal((await db.query('select * from public.profiles')).rows.length, 1);
+  assert.equal(
+    (await db.query<{ language: string }>('select language from public.preferences')).rows[0]
+      .language,
+    'Kurdish',
+  );
+  assert.equal((await db.query('select * from public.bookmarks')).rows.length, 1);
+  await db.exec('commit;');
   await assert.rejects(
     db.exec(
       `insert into public.profiles(user_id,platform,username,display_name,kind,status,alerts) values('${alice}','tiktok','forged','forged','connected','connected',true)`,
@@ -40,6 +53,8 @@ test('signed-in clients can save their own real links without forging connection
   );
   await db.exec(`set request.jwt.claim.sub='${bob}';`);
   assert.equal((await db.query('select * from public.profiles')).rows.length, 0);
+  assert.equal((await db.query('select * from public.bookmarks')).rows.length, 0);
+  assert.equal((await db.query('select * from public.preferences')).rows.length, 0);
   await assert.rejects(db.query('select public.remove_my_saved_profile($1,true)', [id]));
   await db.exec(`set request.jwt.claim.sub='${alice}';`);
   await db.query('select public.remove_my_saved_profile($1,true)', [id]);

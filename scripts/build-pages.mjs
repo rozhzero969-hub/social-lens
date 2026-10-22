@@ -30,6 +30,7 @@ for (const file of ['page.tsx', 'layout.tsx', 'globals.css', 'icon.svg']) {
 await cp(path.join(root, 'components'), path.join(staging, 'components'), { recursive: true });
 for (const file of [
   'types.ts',
+  'embeds.ts',
   'platforms.ts',
   'supabase.ts',
   'client-actions.ts',

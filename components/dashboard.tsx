@@ -56,6 +56,9 @@ import { capabilities, profileUrl } from '@/lib/platforms';
 import { inQuietHours, localClock } from '@/lib/monitoring';
 import AuthScreen from './auth-screen';
 import Logo from './logo';
+import SocialEmbed from './social-embed';
+import ProfileViewer from './profile-viewer';
+import { profileEmbed } from '@/lib/embeds';
 type Page = 'Home' | 'Accounts' | 'Profiles' | 'Reports' | 'Inbox' | 'Saved' | 'Settings';
 type DialogName = 'connect' | 'profile' | 'bookmark' | 'delete' | 'install' | null;
 type InstallEvent = Event & {
@@ -88,10 +91,12 @@ function Modal({
   title,
   children,
   onClose,
+  wide = false,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  wide?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
@@ -101,7 +106,7 @@ function Modal({
   return (
     <dialog
       ref={ref}
-      className="modal"
+      className={`modal${wide ? ' modal-wide' : ''}`}
       onCancel={onClose}
       onClick={(e) => {
         if (e.target === ref.current) onClose();
@@ -172,6 +177,7 @@ export default function Dashboard() {
   const [standalone, setStandalone] = useState(false);
   const [online, setOnline] = useState(true);
   const activeUser = useRef<string | null>(null);
+  const loadVersion = useRef(0);
   const loadRef = useRef<() => Promise<void>>(async () => {});
   const currentData = useRef(data);
   currentData.current = data;
@@ -186,6 +192,7 @@ export default function Dashboard() {
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
   async function load() {
+    const version = ++loadVersion.current;
     if (!supabase) {
       setReady(true);
       return;
@@ -194,6 +201,7 @@ export default function Dashboard() {
       data: { user: account },
       error: authError,
     } = await supabase.auth.getUser();
+    if (version !== loadVersion.current) return;
     if (authError || !account) {
       setUser(null);
       setData(emptyData());
@@ -213,6 +221,7 @@ export default function Dashboard() {
       ),
     );
     const failed = results.find((result) => result.error);
+    if (version !== loadVersion.current || activeUser.current !== account.id) return;
     if (failed) throw new Error('We couldn’t load your workspace. Please try refreshing.');
     if (!results[4].data?.length) {
       const { error } = await supabase
@@ -223,6 +232,7 @@ export default function Dashboard() {
         );
       if (error) throw new Error('We couldn’t save your preferences. Please retry.');
     }
+    if (version !== loadVersion.current || activeUser.current !== account.id) return;
     setData({
       profiles: results[0].data || [],
       changes: (results[1].data || []).sort((a, b) => b.detected_at.localeCompare(a.detected_at)),
@@ -279,6 +289,7 @@ export default function Dashboard() {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')
         setTimeout(() => loadRef.current().catch((e) => say(e.message)), 0);
       if (event === 'SIGNED_OUT') {
+        ++loadVersion.current;
         setUser(null);
         setData(emptyData());
         activeUser.current = null;
@@ -311,6 +322,12 @@ export default function Dashboard() {
   useEffect(() => {
     setError('');
   }, [dialog, detail]);
+  useEffect(() => {
+    // A profile removed on another device must also disappear from its open viewer.
+    setDetail((current) =>
+      current ? data.profiles.find((p) => p.id === current.id) || null : null,
+    );
+  }, [data.profiles]);
   useEffect(() => {
     if (!user || !supabase) return;
     const channel = supabase
@@ -357,7 +374,27 @@ export default function Dashboard() {
         },
       )
       .subscribe();
+    // Polling covers tables not published to Realtime, missed events, and deletions.
+    let refreshing = false;
+    const refresh = () => {
+      if (document.visibilityState !== 'visible' || !navigator.onLine || refreshing) return;
+      refreshing = true;
+      loadRef
+        .current()
+        .catch(() => {})
+        .finally(() => {
+          refreshing = false;
+        });
+    };
+    const timer = window.setInterval(refresh, 30000);
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh);
+    window.addEventListener('online', refresh);
     return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('online', refresh);
       supabase!.removeChannel(channel);
     };
   }, [user?.id]);
@@ -487,7 +524,7 @@ export default function Dashboard() {
       await load();
       setDialog(null);
       navigate('Profiles');
-      say('Profile link saved to your workspace.');
+      say('Profile added. Open it to view its public preview.');
     });
   }
   async function saveLink(event: FormEvent<HTMLFormElement>) {
@@ -756,7 +793,7 @@ export default function Dashboard() {
                   : page === 'Accounts'
                     ? 'Connect only the accounts you own, through official authorization.'
                     : page === 'Profiles'
-                      ? 'Keep your own profile links and people you want to revisit.'
+                      ? 'Your profiles and their available public content, in one place.'
                       : page === 'Reports'
                         ? 'A clear view of observed activity, with sources and coverage.'
                         : page === 'Inbox'
@@ -938,8 +975,8 @@ export default function Dashboard() {
                 <div className="notice">
                   <Link2 size={20} />
                   <p>
-                    Saved profiles are links, not connected accounts. They do not unlock private
-                    information or automatic monitoring.
+                    Open a profile to see its public preview. Viewing a profile does not connect the
+                    account or enable automatic monitoring.
                   </p>
                 </div>
               )}
@@ -954,7 +991,7 @@ export default function Dashboard() {
                         className={`status-badge ${profile.status === 'connected' ? 'positive' : ''}`}
                       >
                         {profile.kind === 'saved'
-                          ? 'Saved link'
+                          ? 'Public profile'
                           : profile.status.replaceAll('_', ' ')}
                       </span>
                     </div>
@@ -965,7 +1002,7 @@ export default function Dashboard() {
                     <div className="profile-information">
                       <span>
                         {profile.kind === 'saved'
-                          ? 'Monitoring unavailable'
+                          ? 'Public content preview'
                           : profile.last_sync
                             ? 'Checked ' + date(profile.last_sync, data.preferences.timezone)
                             : 'No successful checks yet'}
@@ -977,6 +1014,11 @@ export default function Dashboard() {
                         </span>
                       )}
                     </div>
+                    <SocialEmbed
+                      {...profileEmbed(profile.platform, profile.username)}
+                      title={`@${profile.username} public profile`}
+                      compact
+                    />
                     <button className="secondary full" onClick={() => setDetail(profile)}>
                       View profile <ArrowRight size={16} />
                     </button>
@@ -1166,7 +1208,7 @@ export default function Dashboard() {
                 <div className="panel-heading">
                   <div>
                     <h2>Your daily rhythm</h2>
-                    <p>Set your preferences. Save when you’re ready.</p>
+                    <p>Preferences sync across devices on this account. Save when you’re ready.</p>
                   </div>
                   <SlidersHorizontal size={22} />
                 </div>
@@ -1381,7 +1423,7 @@ export default function Dashboard() {
             dialog === 'connect'
               ? 'Connect your account'
               : dialog === 'profile'
-                ? 'Add a profile link'
+                ? 'Add a profile'
                 : dialog === 'bookmark'
                   ? 'Save something good'
                   : dialog === 'delete'
@@ -1439,8 +1481,8 @@ export default function Dashboard() {
           {dialog === 'profile' && (
             <form onSubmit={addProfile}>
               <p className="modal-intro">
-                Add your Instagram or TikTok profile. This saves its original link without claiming
-                it is connected or monitored.
+                Add an Instagram or TikTok username to view its available public profile preview.
+                You can also save individual public posts inside the profile.
               </p>
               <Field label="Platform">
                 <select name="platform">
@@ -1554,7 +1596,7 @@ export default function Dashboard() {
         </Modal>
       )}
       {detail && (
-        <Modal title={detail.display_name} onClose={() => setDetail(null)}>
+        <Modal title={detail.display_name} onClose={() => setDetail(null)} wide>
           <div className="detail-heading">
             <span className="platform-mark">
               <PlatformIcon platform={detail.platform} size={25} />
@@ -1563,27 +1605,24 @@ export default function Dashboard() {
               <h3>@{detail.username}</h3>
               <p>
                 {label(detail.platform)} ·{' '}
-                {detail.kind === 'saved' ? 'Saved profile link' : 'Connected account'}
+                {detail.kind === 'saved' ? 'Public profile' : 'Connected account'}
               </p>
             </div>
           </div>
-          <p className="modal-intro">
-            {detail.bio ||
-              'This is your saved profile link. No activity has been collected from it.'}
-          </p>
-          <div className="detail-facts">
-            <span>
-              <strong>Connection status</strong>
-              {detail.kind === 'saved' ? 'Link saved. Monitoring is not available.' : detail.status}
-            </span>
-            <span>
-              <strong>Last successful check</strong>
-              {detail.last_sync
-                ? date(detail.last_sync, data.preferences.timezone)
-                : 'No checks completed'}
-            </span>
-            {detail.last_sync_error && <span className="warning">{detail.last_sync_error}</span>}
-          </div>
+          <ProfileViewer
+            key={detail.id}
+            profile={detail}
+            bookmarks={data.bookmarks}
+            onSave={async (url, collection) => {
+              await clientAction('bookmark', {
+                url,
+                collection,
+                title: `@${detail.username} saved post`,
+              });
+              await load();
+              say('Post saved. It will also appear on your other devices.');
+            }}
+          />
           <a
             className="secondary full"
             href={profileUrl(detail.platform, detail.username)}

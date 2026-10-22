@@ -34,3 +34,9 @@ Register approved TikTok and Instagram applications and deploy the complete Next
 The existing queue and worker code still requires deployment. AI reports require an OpenAI API key/model, email delivery requires Resend, and the scheduler requires `APP_URL` and `CRON_SECRET`. Existing database migrations are recorded as applied; future migrations must use owner-authorized access scoped to this new project.
 
 Before a public monitoring beta, test real provider permissions, pagination, rate limits, expiry, revocation, retention and deletion. The current adapters fetch a recent media window, which is insufficient for high-volume reconciliation without further live testing.
+
+## Public profile viewer and device synchronization
+
+Public profile and post previews use fixed-origin TikTok/Instagram iframes, isolated from the authenticated app. No third-party scripts run in the parent document, no arbitrary embed HTML is accepted, and no external retrieval service key is required. The provider controls which public details and recent media appear. Stories, highlights, complete archives and downloads are not available through these embeds. A finished iframe navigation is not treated as proof that content is available; reload and original links remain available.
+
+Profiles, bookmarks, read status and report preferences use the same Supabase account on every device. While visible and online, the workspace refreshes every 30 seconds and on focus, visibility restoration and reconnection; existing realtime report/change inserts are preserved. No new database grants or publications are required for this fallback. Stale in-flight loads cannot overwrite a newer account session. Theme and notification permission remain device-local.
