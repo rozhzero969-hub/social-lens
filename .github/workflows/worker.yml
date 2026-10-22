@@ -1,0 +1,25 @@
+name: Scheduled social checks and reports
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+permissions: {}
+concurrency:
+  group: social-lens-worker
+  cancel-in-progress: false
+jobs:
+  tick:
+    if: vars.APP_URL != ''
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run authenticated worker
+        env:
+          APP_URL: ${{ vars.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$CRON_SECRET"
+          curl --fail --silent --show-error --max-time 300 \
+            --request POST \
+            --header "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/jobs"

@@ -1,0 +1,126 @@
+import { AppData, defaultPreferences } from './types';
+export function demoData(): AppData {
+  const now = new Date();
+  const ago = (h: number) => new Date(now.getTime() - h * 3600000).toISOString();
+  const profiles: AppData['profiles'] = [
+    {
+      id: 'demo-1',
+      platform: 'instagram',
+      username: 'studio.north',
+      display_name: 'Studio North',
+      kind: 'connected',
+      status: 'connected',
+      last_sync: ago(0.1),
+      followers: 24800,
+      bio: 'Thoughtful spaces. Everyday inspiration.',
+      alerts: true,
+    },
+    {
+      id: 'demo-2',
+      platform: 'tiktok',
+      username: 'north.in.motion',
+      display_name: 'North in Motion',
+      kind: 'connected',
+      status: 'connected',
+      last_sync: ago(0.2),
+      followers: 16200,
+      bio: 'A little creativity, every day.',
+      alerts: true,
+    },
+    {
+      id: 'demo-3',
+      platform: 'instagram',
+      username: 'the.slow.journal',
+      display_name: 'The Slow Journal',
+      kind: 'saved',
+      status: 'unsupported',
+      last_sync: null,
+      followers: null,
+      bio: 'A saved link. Monitoring availability is not verified.',
+      alerts: false,
+    },
+  ];
+  const changes: AppData['changes'] = [
+    {
+      id: 'change-1',
+      profile_id: 'demo-1',
+      platform: 'instagram',
+      username: 'studio.north',
+      kind: 'post',
+      title: 'A new perspective on everyday spaces',
+      detail: 'A new post is available from Studio North.',
+      detected_at: ago(0.5),
+      posted_at: ago(0.6),
+      source_url: 'https://www.instagram.com/',
+      read: false,
+    },
+    {
+      id: 'change-2',
+      profile_id: 'demo-2',
+      platform: 'tiktok',
+      username: 'north.in.motion',
+      kind: 'metric',
+      title: 'A little momentum worth noticing',
+      detail:
+        'Follower count increased by 128 between two successful checks. Individual followers are not identified.',
+      detected_at: ago(1),
+      posted_at: null,
+      source_url: 'https://www.tiktok.com/',
+      read: false,
+    },
+    {
+      id: 'change-3',
+      profile_id: 'demo-1',
+      platform: 'instagram',
+      username: 'studio.north',
+      kind: 'bio',
+      title: 'Studio North refreshed their bio',
+      detail: 'The profile bio changed to “Thoughtful spaces. Everyday inspiration.”',
+      detected_at: ago(2),
+      posted_at: null,
+      source_url: 'https://www.instagram.com/',
+      read: true,
+    },
+    {
+      id: 'change-4',
+      profile_id: 'demo-2',
+      platform: 'tiktok',
+      username: 'north.in.motion',
+      kind: 'post',
+      title: 'Behind the scenes, in 30 seconds',
+      detail: 'A new video is available from North in Motion.',
+      detected_at: ago(3),
+      posted_at: ago(3.2),
+      source_url: 'https://www.tiktok.com/',
+      read: true,
+    },
+  ];
+  return {
+    profiles,
+    changes,
+    reports: [
+      {
+        id: 'report-demo',
+        title: 'Your daily social briefing',
+        date: now.toISOString().slice(0, 10),
+        summary:
+          'A good day for fresh perspectives. Studio North shared a new post and updated its bio, while North in Motion gained 128 followers and published a new video.',
+        coverage: { success: 2, total: 2, failed: 0 },
+        items: changes,
+        generated_by: 'template',
+        created_at: ago(0.1),
+      },
+    ],
+    bookmarks: [
+      {
+        id: 'bookmark-demo',
+        title: 'A place for your next idea',
+        url: 'https://www.instagram.com/',
+        platform: 'instagram',
+        collection: 'Inspiration',
+        created_at: ago(2),
+      },
+    ],
+    preferences: { ...defaultPreferences },
+  };
+}
