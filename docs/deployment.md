@@ -1,5 +1,13 @@
 # Deployment and operations
 
+## GitHub Pages preview
+
+The public Pages URL serves a static export of the interactive dashboard with sample data, local bookmarks, saved profile links, sample reports and preferences. `pnpm build:pages` prepares an isolated static build in `.local/pages-build/out` using the repository base path `/social-lens`. It excludes all server routes and explicitly clears browser Supabase configuration so the preview never attempts to use an absent backend.
+
+The `pages.yml` workflow builds and deploys this artifact. Repository Pages settings must use **GitHub Actions**, rather than publishing the `main` source folder. Publishing the source folder lets Jekyll render the README, which is documentation rather than the app.
+
+GitHub Pages does not host the live API, OAuth callbacks, database or worker. The complete Next.js app still needs a server-compatible host and the setup below for real account monitoring.
+
 ## Web host
 
 Deploy the private repository on a Node-compatible Next.js host. Use Node 24, `pnpm install --frozen-lockfile`, `pnpm build`, and `pnpm start` (adjust hostname for the chosen host). Add the environment variables from `.env.example` through the hosting secret manager. A production host must bind to its required network interface; the local scripts intentionally bind loopback.

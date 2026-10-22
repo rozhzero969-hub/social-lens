@@ -6,7 +6,8 @@ A quieter way to keep up with TikTok and Instagram. A responsive Next.js app wit
 
 **Working local alpha; live integrations are not activated.** The entire interface can be explored in a labeled preview workspace. Preview changes stay in this browser. Signed-in workspaces use Supabase with row-level security, without sample records.
 
-- Private repository: https://github.com/rozhzero969-hub/social-lens
+- Public repository: https://github.com/rozhzero969-hub/social-lens
+- Interactive GitHub Pages preview: https://rozhzero969-hub.github.io/social-lens/ (sample data stored in your browser; live monitoring is not activated).
 - New Supabase organization: **Social Lens**, ID `llhwliqrcgxmjylqkqen`.
 - The organization creation command succeeded, but the existing CLI and connector authorization cannot create a project in that organization. No live database was provisioned or linked; the browser is signed out. An authenticated owner must authorize the new organization before project creation can finish.
 - TikTok and Instagram connections need registered developer apps, credentials, redirect URLs, permissions and platform approval. They do not work until these are supplied.
@@ -63,6 +64,7 @@ See [the capability matrix](docs/platform-capabilities.md) and [deployment instr
 - `app/api/`: authenticated user actions, OAuth callbacks, health and worker endpoints.
 - `supabase/migrations/`: tenant-owned public records; internal credentials, snapshots and job queue in a private schema. Privileged RPCs are denied to browser roles.
 - `.github/workflows/`: quality checks, manual database deployments, and an authenticated worker tick every 15 minutes. Individual accounts target hourly checks. GitHub schedules can be delayed; precise delivery times are not guaranteed.
+- `scripts/build-pages.mjs`: exports the same dashboard for GitHub Pages in preview mode, without server routes or live credentials. The Pages workflow publishes the built app rather than rendering this README.
 
 ## Production limitations
 
