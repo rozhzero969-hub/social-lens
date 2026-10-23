@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { validateOAuthState } from '../lib/oauth-state';
 import { encrypt, decrypt } from '../lib/crypto';
 import { platformReady, authorizationUrl } from '../lib/adapters';
-import { safeApiBase } from '../lib/api-config';
+import { connectionApiBase, safeApiBase } from '../lib/api-config';
 test('authorization state binds the provider, valid timestamp, user and constant-length random state', () => {
   const now = 1000000;
   const s = {
@@ -45,4 +45,30 @@ test('API configuration cannot send authentication tokens to insecure or credent
     'https://backend.example/api',
   ])
     assert.equal(safeApiBase(input), undefined);
+});
+test('full app hosting discovers its own backend while Pages and cross-origin OAuth remain disabled', () => {
+  assert.equal(
+    connectionApiBase({ origin: 'https://social-lens.vercel.app' }),
+    'https://social-lens.vercel.app',
+  );
+  assert.equal(
+    connectionApiBase({ origin: 'https://rozhzero969-hub.github.io', basePath: '/social-lens' }),
+    undefined,
+  );
+  assert.equal(
+    connectionApiBase({
+      origin: 'https://rozhzero969-hub.github.io',
+      basePath: '/social-lens',
+      configured: 'https://social-lens.vercel.app',
+    }),
+    undefined,
+  );
+  assert.equal(
+    connectionApiBase({
+      origin: 'https://social-lens.vercel.app',
+      configured: 'https://social-lens.vercel.app/',
+    }),
+    'https://social-lens.vercel.app',
+  );
+  assert.equal(connectionApiBase({ configured: 'https://social-lens.vercel.app' }), undefined);
 });

@@ -1,8 +1,12 @@
 import { supabase } from './supabase';
 import { parseProfile, safeContentUrl } from './platforms';
 import type { Platform } from './types';
-import { safeApiBase } from './api-config';
-const apiBase = safeApiBase(process.env.NEXT_PUBLIC_API_BASE_URL);
+import { connectionApiBase } from './api-config';
+const apiBase = connectionApiBase({
+  configured: process.env.NEXT_PUBLIC_API_BASE_URL,
+  basePath: process.env.NEXT_PUBLIC_BASE_PATH,
+  origin: typeof window === 'undefined' ? undefined : window.location.origin,
+});
 export async function getSocialConnectionStatus(): Promise<{
   instagram: boolean;
   tiktok: boolean;
@@ -127,6 +131,7 @@ export async function startSocialConnection(platform: Platform) {
   } = await supabase.auth.getSession();
   const response = await fetch(apiBase + `/api/connect/${platform}`, {
     method: 'POST',
+    credentials: 'same-origin',
     headers: { Authorization: `Bearer ${session?.access_token}` },
   });
   const body = await response.json();
