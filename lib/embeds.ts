@@ -8,9 +8,11 @@ export function profileEmbed(platform: Platform, input: string) {
   return {
     original: profileUrl(platform, username),
     src:
-      platform === 'tiktok'
-        ? `https://www.tiktok.com/embed/@${encodeURIComponent(username)}`
-        : `https://www.instagram.com/${encodeURIComponent(username)}/embed/`,
+      platform === 'snapchat'
+        ? `https://www.snapchat.com/add/${encodeURIComponent(username)}/embed`
+        : platform === 'tiktok'
+          ? `https://www.tiktok.com/embed/@${encodeURIComponent(username)}`
+          : `https://www.instagram.com/${encodeURIComponent(username)}/embed/`,
   };
 }
 
@@ -25,6 +27,14 @@ export function contentEmbed(input: string) {
         original: `https://www.instagram.com/${match[1]}/${match[2]}/`,
         src: `https://www.instagram.com/${match[1]}/${match[2]}/embed/`,
       };
+  } else if (platform === 'snapchat') {
+    const match = path.match(/^\/(spotlight|stories|lens)\/([A-Za-z0-9_-]+)\/?$/);
+    if (match)
+      return {
+        platform,
+        original: `https://www.snapchat.com/${match[1]}/${match[2]}`,
+        src: `https://www.snapchat.com/${match[1]}/${match[2]}/embed`,
+      };
   } else {
     const match = path.match(/^\/@[A-Za-z0-9._]+\/video\/(\d+)\/?$/);
     if (match)
@@ -35,9 +45,27 @@ export function contentEmbed(input: string) {
       };
   }
   throw new Error(
-    'Paste a full Instagram post/Reel link or TikTok video link. Short links and stories cannot be embedded here.',
+    'Paste a full Instagram post/Reel link TikTok video or Snapchat Spotlight/Story link. Short links and stories cannot be embedded here.',
   );
 }
 
 export const profileCollection = (platform: Platform, username: string) =>
   `Profile:${platform}:${parseProfile(username, platform)}`;
+
+export function isTrustedEmbed(value: string) {
+  try {
+    const u = new URL(value);
+    if (u.protocol !== 'https:' || u.username || u.password || u.port) return false;
+    if (u.hostname === 'www.tiktok.com')
+      return /^\/(embed\/@[A-Za-z0-9._]+|player\/v1\/\d+)\/?$/.test(u.pathname);
+    if (u.hostname === 'www.instagram.com')
+      return /^\/(?:[A-Za-z0-9._]+|(?:p|reel|reels)\/[A-Za-z0-9_-]+)\/embed\/$/.test(u.pathname);
+    if (u.hostname === 'www.snapchat.com')
+      return /^\/(add\/[A-Za-z][A-Za-z0-9._-]{2,14}|(?:spotlight|stories|lens)\/[A-Za-z0-9_-]+)\/embed$/.test(
+        u.pathname,
+      );
+    return false;
+  } catch {
+    return false;
+  }
+}

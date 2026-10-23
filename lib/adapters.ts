@@ -30,6 +30,7 @@ export async function platformFetch(url: string, init?: RequestInit) {
   return body;
 }
 export function platformReady(p: Platform) {
+  if (p === 'snapchat') return false;
   return Boolean(
     process.env.TOKEN_ENCRYPTION_KEY &&
     process.env.APP_URL &&
@@ -40,9 +41,11 @@ export function platformReady(p: Platform) {
   );
 }
 export function callbackUrl(p: Platform) {
+  if (p === 'snapchat') throw new Error('Snapchat account authorization is not configured.');
   return `${process.env.APP_URL}/api/connect/${p}/callback`;
 }
 export function authorizationUrl(p: Platform, state: string) {
+  if (p === 'snapchat') throw new Error('Snapchat account authorization is not configured.');
   const url = new URL(
     p === 'tiktok'
       ? 'https://www.tiktok.com/v2/auth/authorize/'
@@ -68,6 +71,7 @@ export function authorizationUrl(p: Platform, state: string) {
   return url.toString();
 }
 export async function exchangeCode(p: Platform, code: string): Promise<Tokens> {
+  if (p === 'snapchat') throw new Error('Snapchat account authorization is not configured.');
   if (p === 'tiktok')
     return platformFetch('https://open.tiktokapis.com/v2/oauth/token/', {
       method: 'POST',
@@ -100,6 +104,7 @@ export async function exchangeCode(p: Platform, code: string): Promise<Tokens> {
   return { ...long, user_id: String(short.user_id) };
 }
 export async function refreshTokens(p: Platform, t: Tokens): Promise<Tokens> {
+  if (p === 'snapchat') throw new Error('Snapchat account authorization is not configured.');
   if (p === 'tiktok') {
     if (!t.refresh_token) throw new Error('Reconnect this TikTok account.');
     return platformFetch('https://open.tiktokapis.com/v2/oauth/token/', {
@@ -124,6 +129,7 @@ export async function fetchSnapshot(
   p: Platform,
   t: Tokens,
 ): Promise<{ externalId: string; username: string; name: string; snapshot: Snapshot }> {
+  if (p === 'snapchat') throw new Error('Snapchat monitoring is not configured.');
   if (p === 'tiktok') {
     const headers = {
       Authorization: `Bearer ${t.access_token}`,
@@ -185,6 +191,7 @@ export async function fetchSnapshot(
   };
 }
 export async function revokeToken(p: Platform, t: Tokens, externalId: string) {
+  if (p === 'snapchat') throw new Error('Snapchat account authorization is not configured.');
   if (p === 'tiktok')
     await platformFetch('https://open.tiktokapis.com/v2/oauth/revoke/', {
       method: 'POST',

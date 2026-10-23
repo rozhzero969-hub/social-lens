@@ -4,7 +4,7 @@ const base = process.env.NEXT_PUBLIC_BASE_PATH || '';
 export const metadata: Metadata = {
   title: 'Social Lens — Your own social space',
   description:
-    'Your own TikTok and Instagram profiles, saved content, and social perspective. A private workspace that starts with you.',
+    'Your TikTok, Instagram and Snapchat profiles and saved content in one private workspace.',
   manifest: base + '/manifest.webmanifest',
   applicationName: 'Social Lens',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Social Lens' },
