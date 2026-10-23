@@ -62,6 +62,7 @@ import { inQuietHours, localClock } from '@/lib/monitoring';
 import AuthScreen from './auth-screen';
 import Logo from './logo';
 import ProfileViewer from './profile-viewer';
+import { SavedPostPreview } from './social-embed';
 type Page = 'Home' | 'Accounts' | 'Profiles' | 'Reports' | 'Inbox' | 'Saved' | 'Settings';
 type DialogName = 'connect' | 'profile' | 'bookmark' | 'delete' | 'install' | null;
 type InstallEvent = Event & {
@@ -540,7 +541,7 @@ export default function Dashboard() {
       await load();
       setDialog(null);
       navigate('Profiles');
-      say('Profile added. Open it to view its public preview.');
+      say('Profile added. Its public preview loads automatically.');
     });
   }
   async function saveLink(event: FormEvent<HTMLFormElement>) {
@@ -999,7 +1000,7 @@ export default function Dashboard() {
           {(page === 'Accounts' || page === 'Profiles') && (
             <>
               <Filters />
-              <div className="profile-grid">
+              <div className="profile-grid automatic-profiles">
                 {filteredProfiles.map((profile) => (
                   <article className="panel profile-card profile-card-simple" key={profile.id}>
                     <div className="profile-top">
@@ -1033,8 +1034,21 @@ export default function Dashboard() {
                         </span>
                       )}
                     </div>
+                    <ProfileViewer
+                      profile={profile}
+                      bookmarks={data.bookmarks}
+                      onSave={async (url, collection) => {
+                        await clientAction('bookmark', {
+                          url,
+                          collection,
+                          title: `@${profile.username} saved post`,
+                        });
+                        await load();
+                        say('Post saved on your account.');
+                      }}
+                    />
                     <button className="secondary full" onClick={() => setDetail(profile)}>
-                      Open profile <ArrowRight size={16} />
+                      Expand & manage <ArrowRight size={16} />
                     </button>
                   </article>
                 ))}
@@ -1084,11 +1098,7 @@ export default function Dashboard() {
                   )
                   .map((item) => (
                     <article className="panel bookmark-card" key={item.id}>
-                      <div className="bookmark-cover">
-                        <PlatformIcon platform={item.platform} size={30} />
-                        <span>{label(item.platform)}</span>
-                        <Bookmark size={44} />
-                      </div>
+                      <SavedPostPreview url={item.url} title={item.title} />
                       <div className="bookmark-copy">
                         <span className="collection-label">{item.collection}</span>
                         <h2>{item.title}</h2>

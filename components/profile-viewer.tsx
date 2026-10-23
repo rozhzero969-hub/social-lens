@@ -17,7 +17,6 @@ export default function ProfileViewer({
 }) {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'profile' | 'stories' | 'saved'>('profile');
   const stories = storyAccess(profile.platform, profile.username);
   const collection = profileCollection(profile.platform, profile.username);
   const saved = bookmarks
@@ -49,17 +48,7 @@ export default function ProfileViewer({
   return (
     <div className="profile-viewer">
       <div className="profile-viewer-nav">
-        <div className="segmented">
-          <button onClick={() => setTab('profile')} aria-pressed={tab === 'profile'}>
-            Profile
-          </button>
-          <button onClick={() => setTab('saved')} aria-pressed={tab === 'saved'}>
-            Saved posts{saved.length ? ` · ${saved.length}` : ''}
-          </button>
-          <button onClick={() => setTab('stories')} aria-pressed={tab === 'stories'}>
-            Stories
-          </button>
-        </div>
+        <span className="collection-label">Profile & posts</span>
         {profile.platform === 'tiktok' && (
           <a
             className="secondary live-link"
@@ -72,59 +61,49 @@ export default function ProfileViewer({
           </a>
         )}
       </div>
-      {tab === 'profile' && (
-        <>
-          <SocialEmbed
-            {...profileEmbed(profile.platform, profile.username)}
-            title={`@${profile.username} public profile`}
-          />
+      <>
+        <SocialEmbed
+          {...profileEmbed(profile.platform, profile.username)}
+          title={`@${profile.username} public profile`}
+        />
+        <p className="helper">
+          Public content provided by{' '}
+          {profile.platform === 'snapchat'
+            ? 'Snapchat'
+            : profile.platform === 'instagram'
+              ? 'Instagram'
+              : 'TikTok'}
+          . The platform controls what appears.
+          {profile.platform === 'tiktok' &&
+            ' LIVE opens on TikTok; current broadcast status is not verified.'}
+        </p>
+      </>
+      <section className="profile-stories">
+        {stories.mode === 'embed' ? (
           <p className="helper">
-            Public content provided by{' '}
-            {profile.platform === 'snapchat'
-              ? 'Snapchat'
-              : profile.platform === 'instagram'
-                ? 'Instagram'
-                : 'TikTok'}
-            . The platform controls what appears.
-            {profile.platform === 'tiktok' &&
-              ' LIVE opens on TikTok; current broadcast status is not verified.'}
+            When shared publicly, stories appear in the Snapchat preview above.
           </p>
-        </>
-      )}
-      {tab === 'stories' && (
-        <section className="profile-stories">
-          {stories.mode === 'embed' ? (
-            <>
-              <SocialEmbed
-                {...profileEmbed(profile.platform, profile.username)}
-                title={`@${profile.username} public stories`}
-              />
-              <p className="helper">
-                Select Stories in Snapchat’s viewer. Only stories the profile makes public are
-                available.
-              </p>
-            </>
-          ) : (
-            <div className="story-platform-link">
-              <h3>@{profile.username}’s stories</h3>
-              <p>
-                Story playback opens on {profile.platform === 'instagram' ? 'Instagram' : 'TikTok'}.
-                This platform doesn’t provide stories in its public profile embed.
-              </p>
-              <a className="primary" href={stories.url} target="_blank" rel="noreferrer">
-                View on {profile.platform === 'instagram' ? 'Instagram' : 'TikTok'} ↗
-              </a>
-              <p className="helper">
-                You may need to sign in. Story availability and LIVE status are unknown here; no
-                automatic LIVE alerts are active.
-              </p>
-            </div>
-          )}
-        </section>
-      )}
-      {tab === 'saved' && (
-        <section className="profile-posts">
-          <h3>Save a post</h3>
+        ) : (
+          <div className="story-platform-link">
+            <h3>Stories</h3>
+            <p>
+              Stories for @{profile.username} open on{' '}
+              {profile.platform === 'instagram' ? 'Instagram' : 'TikTok'}. This platform doesn’t
+              provide stories in its public profile embed.
+            </p>
+            <a className="primary" href={stories.url} target="_blank" rel="noreferrer">
+              View on {profile.platform === 'instagram' ? 'Instagram' : 'TikTok'} ↗
+            </a>
+            <p className="helper">
+              The platform may require sign-in. Story availability isn’t verified here.
+            </p>
+          </div>
+        )}
+      </section>
+      <section className="profile-posts">
+        <h3>Saved posts{saved.length ? ` · ${saved.length}` : ''}</h3>
+        <details className="save-post-details">
+          <summary>Save another post</summary>
           <p>Paste a public link. Your saved posts appear on all your devices.</p>
           <form onSubmit={save} className="embed-add-form">
             <label className="field">
@@ -151,13 +130,14 @@ export default function ProfileViewer({
               {error}
             </p>
           )}
-          <div className="embedded-posts">
-            {saved.map((post) => (
-              <SocialEmbed key={post.id} {...post.embed} title={post.title} />
-            ))}
-          </div>
-        </section>
-      )}
+        </details>
+        <div className="embedded-posts">
+          {!saved.length && <p className="helper">No posts saved for this profile yet.</p>}
+          {saved.map((post) => (
+            <SocialEmbed key={post.id} {...post.embed} title={post.title} />
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import { ExternalLink, Loader2, RefreshCw } from 'lucide-react';
-import { isTrustedEmbed } from '@/lib/embeds';
+import { contentEmbed, isTrustedEmbed } from '@/lib/embeds';
 
 export default function SocialEmbed({
   src,
@@ -14,11 +14,31 @@ export default function SocialEmbed({
   title: string;
   compact?: boolean;
 }) {
+  const container = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  useEffect(() => {
+    if (typeof IntersectionObserver === 'undefined') {
+      setActive(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setActive(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '400px' },
+    );
+    if (container.current) observer.observe(container.current);
+    return () => observer.disconnect();
+  }, []);
   const [waiting, setWaiting] = useState(true);
   const [slow, setSlow] = useState(false);
   const pending = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    if (!active) return;
     setWaiting(true);
     setSlow(false);
     pending.current = setTimeout(() => {
@@ -28,40 +48,48 @@ export default function SocialEmbed({
     return () => {
       if (pending.current) clearTimeout(pending.current);
     };
-  }, [src, attempt]);
+  }, [src, attempt, active]);
   if (!isTrustedEmbed(src)) return <p role="alert">This preview source is not supported.</p>;
   return (
-    <div className={`social-preview ${compact ? 'compact' : ''}`}>
+    <div
+      ref={container}
+      className={`social-preview ${compact ? 'compact' : ''}`}
+      aria-label={title}
+    >
       {waiting && (
         <div className="embed-loading embed-skeleton" role="status">
           <div className="skeleton-avatar" />
           <div className="skeleton-lines" />
           <span>
-            <Loader2 size={17} className="spin" /> Opening profile…
+            <Loader2 size={17} className="spin" /> Loading preview…
           </span>
         </div>
       )}
-      <iframe
-        key={src + attempt}
-        src={src}
-        title={title}
-        className="social-frame"
-        loading="eager"
-        referrerPolicy="strict-origin-when-cross-origin"
-        sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-        allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-        allowFullScreen
-        onLoad={() => {
-          if (pending.current) clearTimeout(pending.current);
-          setWaiting(false);
-          setSlow(false);
-        }}
-        onError={() => {
-          if (pending.current) clearTimeout(pending.current);
-          setWaiting(false);
-          setSlow(true);
-        }}
-      />
+      {active ? (
+        <iframe
+          key={src + attempt}
+          src={src}
+          title={title}
+          className="social-frame"
+          loading="eager"
+          referrerPolicy="strict-origin-when-cross-origin"
+          sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
+          allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+          allowFullScreen
+          onLoad={() => {
+            if (pending.current) clearTimeout(pending.current);
+            setWaiting(false);
+            setSlow(false);
+          }}
+          onError={() => {
+            if (pending.current) clearTimeout(pending.current);
+            setWaiting(false);
+            setSlow(true);
+          }}
+        />
+      ) : (
+        <div className="social-frame embed-placeholder" aria-hidden="true" />
+      )}
       <div className="embed-tools">
         <button
           type="button"
@@ -91,4 +119,18 @@ export default function SocialEmbed({
       )}
     </div>
   );
+}
+
+export function SavedPostPreview({ url, title }: { url: string; title: string }) {
+  let embed;
+  try {
+    embed = contentEmbed(url);
+  } catch {
+    return (
+      <p className="helper embed-help">
+        This link has no supported inline preview. Open the original below.
+      </p>
+    );
+  }
+  return <SocialEmbed {...embed} title={title} compact />;
 }

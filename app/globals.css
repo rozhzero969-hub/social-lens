@@ -2697,3 +2697,64 @@ button:active {
 .story-platform-link .primary {
   display: inline-flex;
 }
+
+/* Content loads automatically near the viewport, without opening a modal. */
+.automatic-profiles,
+.bookmark-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+  align-items: start;
+}
+.automatic-profiles .profile-viewer {
+  min-width: 0;
+}
+.profile-card-simple .profile-viewer .social-preview {
+  margin: 12px 0;
+}
+.story-platform-link {
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.story-platform-link h3 {
+  margin-top: 0;
+}
+.story-platform-link p {
+  font-size: 13px;
+}
+.save-post-details {
+  margin: 12px 0;
+}
+.save-post-details summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 14px;
+}
+.profile-posts {
+  margin-top: 18px;
+}
+.bookmark-card > .social-preview {
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+.social-preview {
+  min-height: 560px;
+}
+.social-preview.compact {
+  min-height: 460px;
+}
+.embed-skeleton {
+  height: auto;
+  bottom: 44px;
+}
+.embed-placeholder {
+  background: var(--surface);
+}
+@media (max-width: 650px) {
+  .automatic-profiles .profile-viewer-nav {
+    position: static;
+  }
+  .automatic-profiles {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
