@@ -2684,3 +2684,16 @@ button:active {
     flex-wrap: wrap;
   }
 }
+.story-platform-link {
+  padding: 30px 16px;
+  text-align: center;
+}
+.story-platform-link > p {
+  max-width: 440px;
+  margin: 12px auto 20px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.story-platform-link .primary {
+  display: inline-flex;
+}

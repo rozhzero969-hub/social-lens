@@ -68,6 +68,16 @@ export const profileUrl = (p: Platform, input: string) => {
       : `https://www.tiktok.com/@${u}`;
 };
 export const tiktokLiveUrl = (username: string) => `${profileUrl('tiktok', username)}/live`;
+export function storyAccess(platform: Platform, input: string) {
+  const username = parseProfile(input, platform);
+  return {
+    mode: platform === 'snapchat' ? ('embed' as const) : ('external' as const),
+    url:
+      platform === 'instagram'
+        ? `https://www.instagram.com/stories/${encodeURIComponent(username)}/`
+        : profileUrl(platform, username),
+  };
+}
 export function safeContentUrl(input: string): { url: string; platform: Platform } {
   const u = new URL(input);
   if (u.protocol !== 'https:' || u.username || u.password || u.port)

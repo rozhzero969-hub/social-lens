@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { contentEmbed, profileCollection, profileEmbed, isTrustedEmbed } from '../lib/embeds';
-import { parseProfile, tiktokLiveUrl } from '../lib/platforms';
+import { parseProfile, storyAccess, tiktokLiveUrl } from '../lib/platforms';
 
 test('profile frames use fixed platform origins and validated usernames', () => {
   assert.equal(profileEmbed('tiktok', '@scout2015').src, 'https://www.tiktok.com/embed/@scout2015');
@@ -68,4 +68,16 @@ test('frames reject arbitrary scripts, origins, ports and unrelated platform pag
     assert.equal(isTrustedEmbed(src), false);
   for (const platform of ['instagram', 'tiktok', 'snapchat'] as const)
     assert.equal(isTrustedEmbed(profileEmbed(platform, 'someone').src), true);
+});
+test('story access distinguishes actual public embeds from external-only story access', () => {
+  assert.equal(storyAccess('snapchat', 'espn-snap').mode, 'embed');
+  assert.deepEqual(storyAccess('instagram', 'someone'), {
+    mode: 'external',
+    url: 'https://www.instagram.com/stories/someone/',
+  });
+  assert.deepEqual(storyAccess('tiktok', 'someone'), {
+    mode: 'external',
+    url: 'https://www.tiktok.com/@someone',
+  });
+  assert.throws(() => storyAccess('instagram', 'someone/../../evil'));
 });

@@ -4,7 +4,7 @@ import { Plus, Loader2 } from 'lucide-react';
 import type { Bookmark, Profile } from '@/lib/types';
 import { contentEmbed, profileCollection, profileEmbed } from '@/lib/embeds';
 import SocialEmbed from './social-embed';
-import { tiktokLiveUrl } from '@/lib/platforms';
+import { storyAccess, tiktokLiveUrl } from '@/lib/platforms';
 
 export default function ProfileViewer({
   profile,
@@ -17,7 +17,8 @@ export default function ProfileViewer({
 }) {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
-  const [tab, setTab] = useState<'profile' | 'saved'>('profile');
+  const [tab, setTab] = useState<'profile' | 'stories' | 'saved'>('profile');
+  const stories = storyAccess(profile.platform, profile.username);
   const collection = profileCollection(profile.platform, profile.username);
   const saved = bookmarks
     .filter((b) => b.collection === collection)
@@ -55,6 +56,9 @@ export default function ProfileViewer({
           <button onClick={() => setTab('saved')} aria-pressed={tab === 'saved'}>
             Saved posts{saved.length ? ` · ${saved.length}` : ''}
           </button>
+          <button onClick={() => setTab('stories')} aria-pressed={tab === 'stories'}>
+            Stories
+          </button>
         </div>
         {profile.platform === 'tiktok' && (
           <a
@@ -86,6 +90,37 @@ export default function ProfileViewer({
               ' LIVE opens on TikTok; current broadcast status is not verified.'}
           </p>
         </>
+      )}
+      {tab === 'stories' && (
+        <section className="profile-stories">
+          {stories.mode === 'embed' ? (
+            <>
+              <SocialEmbed
+                {...profileEmbed(profile.platform, profile.username)}
+                title={`@${profile.username} public stories`}
+              />
+              <p className="helper">
+                Select Stories in Snapchat’s viewer. Only stories the profile makes public are
+                available.
+              </p>
+            </>
+          ) : (
+            <div className="story-platform-link">
+              <h3>@{profile.username}’s stories</h3>
+              <p>
+                Story playback opens on {profile.platform === 'instagram' ? 'Instagram' : 'TikTok'}.
+                This platform doesn’t provide stories in its public profile embed.
+              </p>
+              <a className="primary" href={stories.url} target="_blank" rel="noreferrer">
+                View on {profile.platform === 'instagram' ? 'Instagram' : 'TikTok'} ↗
+              </a>
+              <p className="helper">
+                You may need to sign in. Story availability and LIVE status are unknown here; no
+                automatic LIVE alerts are active.
+              </p>
+            </div>
+          )}
+        </section>
       )}
       {tab === 'saved' && (
         <section className="profile-posts">
