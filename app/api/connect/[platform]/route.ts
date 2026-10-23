@@ -23,7 +23,7 @@ export async function POST(
     const r = NextResponse.json({ url: authorizationUrl(platform as Platform, state) });
     r.cookies.set(
       `sl_oauth_${platform}`,
-      encrypt({ userId: user.id, state, issuedAt: Date.now() }),
+      encrypt({ userId: user.id, state, platform, issuedAt: Date.now() }),
       {
         httpOnly: true,
         secure: process.env.APP_URL?.startsWith('https://'),
@@ -32,6 +32,7 @@ export async function POST(
         maxAge: 600,
       },
     );
+    r.headers.set('Cache-Control', 'no-store');
     return r;
   } catch (e) {
     return fail(e);

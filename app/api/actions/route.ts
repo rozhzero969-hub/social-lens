@@ -10,8 +10,8 @@ export async function POST(req: NextRequest) {
     const { db, user } = await requireUser(req);
     const b = await req.json();
     if (b.action === 'add-profile') {
-      if (!['instagram', 'tiktok'].includes(b.platform))
-        throw new Error('Choose Instagram or TikTok.');
+      if (!['instagram', 'tiktok', 'snapchat'].includes(b.platform))
+        throw new Error('Choose Instagram, TikTok or Snapchat.');
       const username = parseProfile(String(b.username || ''), b.platform as Platform);
       const { count } = checked(
         await db
@@ -21,17 +21,15 @@ export async function POST(req: NextRequest) {
       );
       if ((count || 0) >= 20) throw new Error('The beta supports up to 20 profiles per account.');
       checked(
-        await db
-          .from('profiles')
-          .insert({
-            user_id: user.id,
-            username,
-            display_name: username,
-            platform: b.platform,
-            kind: 'saved',
-            status: 'unsupported',
-            alerts: false,
-          }),
+        await db.from('profiles').insert({
+          user_id: user.id,
+          username,
+          display_name: username,
+          platform: b.platform,
+          kind: 'saved',
+          status: 'unsupported',
+          alerts: false,
+        }),
       );
       return Response.json({ ok: true });
     }
@@ -41,15 +39,13 @@ export async function POST(req: NextRequest) {
         .trim()
         .slice(0, 300);
       checked(
-        await db
-          .from('bookmarks')
-          .insert({
-            user_id: user.id,
-            url,
-            platform,
-            title,
-            collection: String(b.collection || 'Inspiration').slice(0, 80),
-          }),
+        await db.from('bookmarks').insert({
+          user_id: user.id,
+          url,
+          platform,
+          title,
+          collection: String(b.collection || 'Inspiration').slice(0, 80),
+        }),
       );
       return Response.json({ ok: true });
     }

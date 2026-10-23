@@ -1,6 +1,6 @@
 # Social Lens
 
-Your own social space for TikTok and Instagram profiles, saved content, reports and notifications.
+Your own social space for TikTok, Instagram and Snapchat profiles, saved content, reports and notifications.
 
 **Live app:** https://rozhzero969-hub.github.io/social-lens/
 
@@ -8,7 +8,9 @@ Your own social space for TikTok and Instagram profiles, saved content, reports 
 
 - Sign-up, email confirmation, sign-in and password recovery through Supabase Auth.
 - Sign-in is required before opening a workspace. There are no demo accounts or seeded activity. Old preview data is discarded.
-- Public profile previews inside saved cards and a larger viewer, using platform-hosted embeds.
+- Compact profile cards and an immersive viewer with Profile/Saved posts tabs. Only the open profile loads an embed.
+- Snapchat usernames and public profile/content embeds, with storage protected by the same account ownership rules.
+- A direct Open LIVE link for TikTok profiles; broadcast status is not detected or claimed.
 - Individual Instagram posts/Reels and TikTok videos can be saved and viewed inside a profile.
 - User-owned profiles, bookmarks, collections and report preferences persist in Supabase. Visible devices refresh changes within 30 seconds and when the app is reopened or regains focus.
 - Row-level security isolates each user's data; browser clients cannot forge connected accounts or activity records.
@@ -25,7 +27,7 @@ The GitHub Pages build connects directly to Supabase Auth and authorized databas
 
 ## Still requires external setup
 
-**Public viewing does not authorize or monitor a social account.** Profile embeds show only the public subset the platform makes available; stories, highlights, full archives and downloads are not provided. Embeds may be restricted for private/underage accounts, disabled embedding, browser privacy settings or regional restrictions. Live TikTok/Instagram connections remain disabled until registered developer applications, approved scopes and a secure OAuth backend host are configured. This is clearly shown in the connection dialog. No platform credentials, approval or monitoring access are simulated.
+**Public viewing does not authorize or monitor a social account.** Profile embeds show only the public subset the platform makes available; TikTok/Instagram stories, highlights, full archives and downloads are not provided. Snapchat shows the public subset available through its own embeds. Embeds may be restricted for private/underage accounts, disabled embedding, browser privacy settings or regional restrictions. Live TikTok/Instagram connections remain disabled until registered developer applications, approved scopes and a secure OAuth backend host are configured. This is clearly shown in the connection dialog. No platform credentials, approval or monitoring access are simulated.
 
 Scheduled monitoring, AI reports and email delivery need a deployed worker and provider credentials. Background push notifications when the app is fully closed need a push subscription and delivery service; the service worker receiver is prepared, but background delivery is not active. Browser alerts currently work while the app is open.
 

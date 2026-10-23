@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { contentEmbed, profileCollection, profileEmbed } from '../lib/embeds';
+import { contentEmbed, profileCollection, profileEmbed, isTrustedEmbed } from '../lib/embeds';
+import { parseProfile, storyAccess, tiktokLiveUrl } from '../lib/platforms';
 
 test('profile frames use fixed platform origins and validated usernames', () => {
   assert.equal(profileEmbed('tiktok', '@scout2015').src, 'https://www.tiktok.com/embed/@scout2015');
@@ -36,4 +37,47 @@ test('profile collections normalize consistently across devices', () => {
     profileCollection('instagram', 'some.name'),
   );
   assert.notEqual(profileCollection('instagram', 'name'), profileCollection('tiktok', 'name'));
+});
+test('Snapchat profiles and content stay on Snapchat embed paths', () => {
+  assert.equal(parseProfile('https://www.snapchat.com/add/espn-snap', 'snapchat'), 'espn-snap');
+  assert.equal(
+    profileEmbed('snapchat', 'espn-snap').src,
+    'https://www.snapchat.com/add/espn-snap/embed',
+  );
+  assert.equal(
+    contentEmbed('https://www.snapchat.com/spotlight/abc-123').src,
+    'https://www.snapchat.com/spotlight/abc-123/embed',
+  );
+  assert.equal(tiktokLiveUrl('@someone'), 'https://www.tiktok.com/@someone/live');
+  for (const input of [
+    'https://snapchat.com.evil.com/add/name',
+    'https://user:pass@snapchat.com/add/name',
+    'https://snapchat.com:444/add/name',
+  ])
+    assert.throws(() => parseProfile(input, 'snapchat'));
+});
+test('frames reject arbitrary scripts, origins, ports and unrelated platform pages', () => {
+  for (const src of [
+    'javascript:alert(1)',
+    'https://evil.com/embed',
+    'https://www.tiktok.com.evil.com/embed/@x',
+    'https://www.instagram.com/accounts/login',
+    'https://www.tiktok.com:444/embed/@x',
+    'https://user@www.tiktok.com/embed/@x',
+  ])
+    assert.equal(isTrustedEmbed(src), false);
+  for (const platform of ['instagram', 'tiktok', 'snapchat'] as const)
+    assert.equal(isTrustedEmbed(profileEmbed(platform, 'someone').src), true);
+});
+test('story access distinguishes actual public embeds from external-only story access', () => {
+  assert.equal(storyAccess('snapchat', 'espn-snap').mode, 'embed');
+  assert.deepEqual(storyAccess('instagram', 'someone'), {
+    mode: 'external',
+    url: 'https://www.instagram.com/stories/someone/',
+  });
+  assert.deepEqual(storyAccess('tiktok', 'someone'), {
+    mode: 'external',
+    url: 'https://www.tiktok.com/@someone',
+  });
+  assert.throws(() => storyAccess('instagram', 'someone/../../evil'));
 });

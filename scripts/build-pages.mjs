@@ -1,4 +1,5 @@
-import { cp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
@@ -31,6 +32,7 @@ await cp(path.join(root, 'components'), path.join(staging, 'components'), { recu
 for (const file of [
   'types.ts',
   'embeds.ts',
+  'api-config.ts',
   'platforms.ts',
   'supabase.ts',
   'client-actions.ts',
@@ -83,5 +85,37 @@ const result = spawnSync(
   },
 );
 if (result.status !== 0) process.exit(result.status || 1);
+// Pages cannot set response headers. Hash each exported page's Next.js inline
+// bootstrap scripts instead of enabling arbitrary inline JavaScript.
+async function secureHtml(directory) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const file = path.join(directory, entry.name);
+    if (entry.isDirectory()) {
+      await secureHtml(file);
+      continue;
+    }
+    if (!entry.name.endsWith('.html')) continue;
+    let html = await readFile(file, 'utf8');
+    const hashes = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)]
+      .filter((match) => !/\bsrc\s*=/.test(match[1]))
+      .map((match) => `'sha256-${createHash('sha256').update(match[2]).digest('base64')}'`);
+    const database = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    if (database.protocol !== 'https:') throw new Error('Production Supabase URL must use HTTPS.');
+    const connections = [database.origin, 'wss://' + database.host];
+    if (process.env.NEXT_PUBLIC_API_BASE_URL) {
+      const api = new URL(process.env.NEXT_PUBLIC_API_BASE_URL);
+      if (api.protocol !== 'https:' || api.username || api.password)
+        throw new Error('API URL must use HTTPS without credentials.');
+      connections.push(api.origin);
+    }
+    const policy = `default-src 'self'; script-src 'self' ${[...new Set(hashes)].join(' ')}; style-src 'self' 'unsafe-inline'; connect-src 'self' ${connections.join(' ')}; frame-src https://www.tiktok.com https://www.instagram.com https://www.snapchat.com; img-src 'self' data: https:; font-src 'self' data:; media-src 'self' blob: https:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'`;
+    html = html.replace(
+      '<head>',
+      `<head><meta http-equiv="Content-Security-Policy" content="${policy}">`,
+    );
+    await writeFile(file, html);
+  }
+}
+await secureHtml(path.join(staging, 'out'));
 await writeFile(path.join(staging, 'out', '.nojekyll'), '');
 console.log(`GitHub Pages app built at ${path.join(staging, 'out')}`);

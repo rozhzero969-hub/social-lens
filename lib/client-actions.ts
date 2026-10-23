@@ -1,8 +1,29 @@
 import { supabase } from './supabase';
 import { parseProfile, safeContentUrl } from './platforms';
 import type { Platform } from './types';
-const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
-export const socialConnectionsReady = Boolean(apiBase);
+import { safeApiBase } from './api-config';
+const apiBase = safeApiBase(process.env.NEXT_PUBLIC_API_BASE_URL);
+export async function getSocialConnectionStatus(): Promise<{
+  instagram: boolean;
+  tiktok: boolean;
+}> {
+  const unavailable = { instagram: false, tiktok: false };
+  if (!apiBase) return unavailable;
+  try {
+    const r = await fetch(apiBase + '/api/health', {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return unavailable;
+    const b = await r.json();
+    return {
+      instagram: b.databaseConfigured === true && b.platforms?.instagram === true,
+      tiktok: b.databaseConfigured === true && b.platforms?.tiktok === true,
+    };
+  } catch {
+    return unavailable;
+  }
+}
 export async function clientAction(action: string, payload: Record<string, unknown> = {}) {
   if (!supabase) throw new Error('Account service is not configured. Please try again later.');
   const {
@@ -15,7 +36,7 @@ export async function clientAction(action: string, payload: Record<string, unkno
   switch (action) {
     case 'add-profile': {
       const platform = payload.platform as Platform;
-      if (!['instagram', 'tiktok'].includes(platform))
+      if (!['instagram', 'tiktok', 'snapchat'].includes(platform))
         throw new Error('Choose a supported platform.');
       const username = parseProfile(String(payload.username || ''), platform);
       result = await db.from('profiles').insert({
@@ -93,6 +114,10 @@ export async function clientAction(action: string, payload: Record<string, unkno
   return { ok: true };
 }
 export async function startSocialConnection(platform: Platform) {
+  if (platform === 'snapchat' || !(await getSocialConnectionStatus())[platform])
+    throw new Error(
+      'This platform needs developer credentials and a hosted authorization backend.',
+    );
   if (!supabase || !apiBase)
     throw new Error(
       'This connection is awaiting platform approval and secure authorization setup. You can save your profile link in the meantime.',

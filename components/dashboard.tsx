@@ -38,6 +38,7 @@ import {
   Music2,
   AlertCircle,
   Sparkles,
+  Ghost,
   WifiOff,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -51,14 +52,16 @@ import {
   Profile,
   Report,
 } from '@/lib/types';
-import { clientAction, socialConnectionsReady, startSocialConnection } from '@/lib/client-actions';
+import {
+  clientAction,
+  getSocialConnectionStatus,
+  startSocialConnection,
+} from '@/lib/client-actions';
 import { capabilities, profileUrl } from '@/lib/platforms';
 import { inQuietHours, localClock } from '@/lib/monitoring';
 import AuthScreen from './auth-screen';
 import Logo from './logo';
-import SocialEmbed from './social-embed';
 import ProfileViewer from './profile-viewer';
-import { profileEmbed } from '@/lib/embeds';
 type Page = 'Home' | 'Accounts' | 'Profiles' | 'Reports' | 'Inbox' | 'Saved' | 'Settings';
 type DialogName = 'connect' | 'profile' | 'bookmark' | 'delete' | 'install' | null;
 type InstallEvent = Event & {
@@ -66,17 +69,20 @@ type InstallEvent = Event & {
   userChoice: Promise<{ outcome: string }>;
 };
 const nav = [
-  { name: 'Home', icon: Home },
-  { name: 'Accounts', icon: Link2 },
   { name: 'Profiles', icon: Users },
-  { name: 'Reports', icon: FileText },
   { name: 'Inbox', icon: Bell },
   { name: 'Saved', icon: Bookmark },
 ] as const;
 const basePath = process.env.NEXT_PUBLIC_BASE_PATH || '';
-const label = (p: Platform) => (p === 'instagram' ? 'Instagram' : 'TikTok');
+const label = (p: Platform) => capabilities[p].label;
 function PlatformIcon({ platform, size = 18 }: { platform: Platform; size?: number }) {
-  return platform === 'instagram' ? <Camera size={size} /> : <Music2 size={size} />;
+  return platform === 'instagram' ? (
+    <Camera size={size} />
+  ) : platform === 'snapchat' ? (
+    <Ghost size={size} />
+  ) : (
+    <Music2 size={size} />
+  );
 }
 function date(value: string, timezone: string) {
   return new Date(value).toLocaleString(undefined, {
@@ -158,7 +164,7 @@ export default function Dashboard() {
   const [data, setData] = useState<AppData>(emptyData);
   const [ready, setReady] = useState(false);
   const [recovery, setRecovery] = useState(false);
-  const [page, setPage] = useState<Page>('Home');
+  const [page, setPage] = useState<Page>('Profiles');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
@@ -170,6 +176,16 @@ export default function Dashboard() {
   const [report, setReport] = useState<Report | null>(null);
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState<'all' | Platform>('all');
+  const [connectionStatus, setConnectionStatus] = useState({ instagram: false, tiktok: false });
+  useEffect(() => {
+    let mounted = true;
+    getSocialConnectionStatus().then((status) => {
+      if (mounted) setConnectionStatus(status);
+    });
+    return () => {
+      mounted = false;
+    };
+  }, []);
   const [notificationPermission, setNotificationPermission] = useState<
     NotificationPermission | 'unsupported'
   >('default');
@@ -294,7 +310,7 @@ export default function Dashboard() {
         setData(emptyData());
         activeUser.current = null;
         setRecovery(false);
-        setPage('Home');
+        setPage('Profiles');
         setReady(true);
       }
     });
@@ -601,7 +617,7 @@ export default function Dashboard() {
     return (
       <div className="filters">
         <div className="segmented">
-          {(['all', 'instagram', 'tiktok'] as const).map((value) => (
+          {(['all', 'instagram', 'tiktok', 'snapchat'] as const).map((value) => (
             <button
               key={value}
               onClick={() => setPlatform(value)}
@@ -771,9 +787,21 @@ export default function Dashboard() {
           </div>
         </header>
         <main className="content" id="main">
+          {page === 'Settings' && (
+            <div className="settings-shortcuts">
+              <button className="secondary" onClick={() => navigate('Accounts')}>
+                Account connections
+              </button>
+              <button className="secondary" onClick={() => navigate('Reports')}>
+                Reports
+              </button>
+              <button className="secondary" onClick={() => navigate('Home')}>
+                Overview
+              </button>
+            </div>
+          )}
           <div className="page-heading">
             <div>
-              <span className="overline">YOUR PRIVATE WORKSPACE</span>
               <h1>
                 {page === 'Home'
                   ? 'Welcome to your space.'
@@ -784,7 +812,7 @@ export default function Dashboard() {
                       : page === 'Accounts'
                         ? 'Your accounts'
                         : page === 'Profiles'
-                          ? 'Saved profiles'
+                          ? 'Profiles'
                           : page}
               </h1>
               <p>
@@ -971,18 +999,9 @@ export default function Dashboard() {
           {(page === 'Accounts' || page === 'Profiles') && (
             <>
               <Filters />
-              {page === 'Profiles' && (
-                <div className="notice">
-                  <Link2 size={20} />
-                  <p>
-                    Open a profile to see its public preview. Viewing a profile does not connect the
-                    account or enable automatic monitoring.
-                  </p>
-                </div>
-              )}
               <div className="profile-grid">
                 {filteredProfiles.map((profile) => (
-                  <article className="panel profile-card" key={profile.id}>
+                  <article className="panel profile-card profile-card-simple" key={profile.id}>
                     <div className="profile-top">
                       <span className={`platform-mark ${profile.platform}`}>
                         <PlatformIcon platform={profile.platform} size={24} />
@@ -1014,13 +1033,8 @@ export default function Dashboard() {
                         </span>
                       )}
                     </div>
-                    <SocialEmbed
-                      {...profileEmbed(profile.platform, profile.username)}
-                      title={`@${profile.username} public profile`}
-                      compact
-                    />
                     <button className="secondary full" onClick={() => setDetail(profile)}>
-                      View profile <ArrowRight size={16} />
+                      Open profile <ArrowRight size={16} />
                     </button>
                   </article>
                 ))}
@@ -1400,8 +1414,7 @@ export default function Dashboard() {
         </main>
         <nav className="mobile-nav" aria-label="Mobile navigation">
           {[
-            { name: 'Home' as Page, icon: Home },
-            { name: 'Accounts' as Page, icon: Link2 },
+            { name: 'Profiles' as Page, icon: Users },
             { name: 'Saved' as Page, icon: Bookmark },
             { name: 'Inbox' as Page, icon: Bell },
             { name: 'Settings' as Page, icon: Settings },
@@ -1447,12 +1460,14 @@ export default function Dashboard() {
                     <h3>{label(value)}</h3>
                     <p>{capabilities[value].eligibility}</p>
                     <span className="status-badge">
-                      {socialConnectionsReady ? 'Ready to authorize' : 'Connection setup pending'}
+                      {connectionStatus[value]
+                        ? 'Backend configured; authorization required'
+                        : 'Not configured'}
                     </span>
                   </div>
                   <button
                     className="secondary"
-                    disabled={busy || !socialConnectionsReady}
+                    disabled={busy || !connectionStatus[value]}
                     onClick={() =>
                       run(async () => {
                         await startSocialConnection(value);
@@ -1463,12 +1478,13 @@ export default function Dashboard() {
                   </button>
                 </div>
               ))}
-              {!socialConnectionsReady && (
+              {!connectionStatus.instagram && !connectionStatus.tiktok && (
                 <div className="notice">
                   <AlertCircle size={19} />
                   <p>
-                    Live social connections aren’t available yet. Platform approval and secure
-                    authorization setup are still required. You can save your own profile links now.
+                    Account connections are not configured on this deployment. The app still needs
+                    TikTok/Meta developer credentials and a hosted OAuth backend. Public profiles
+                    work without that setup.
                   </p>
                 </div>
               )}
@@ -1480,14 +1496,12 @@ export default function Dashboard() {
           )}
           {dialog === 'profile' && (
             <form onSubmit={addProfile}>
-              <p className="modal-intro">
-                Add an Instagram or TikTok username to view its available public profile preview.
-                You can also save individual public posts inside the profile.
-              </p>
+              <p className="modal-intro">Enter a TikTok, Instagram or Snapchat username.</p>
               <Field label="Platform">
                 <select name="platform">
                   <option value="instagram">Instagram</option>
                   <option value="tiktok">TikTok</option>
+                  <option value="snapchat">Snapchat</option>
                 </select>
               </Field>
               <Field label="Username or profile URL">

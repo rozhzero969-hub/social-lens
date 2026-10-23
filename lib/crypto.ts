@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 function key() {
   const value = process.env.TOKEN_ENCRYPTION_KEY;
-  if (!value || Buffer.from(value, 'hex').length !== 32)
+  if (!value || !/^[a-f0-9]{64}$/i.test(value))
     throw new Error('Set a 32-byte TOKEN_ENCRYPTION_KEY before connecting accounts.');
   return Buffer.from(value, 'hex');
 }
@@ -12,7 +12,10 @@ export function encrypt(value: unknown) {
   return Buffer.concat([iv, cipher.getAuthTag(), encrypted]).toString('base64url');
 }
 export function decrypt<T>(value: string): T {
+  if (!/^[A-Za-z0-9_-]+$/.test(value) || value.length > 131072)
+    throw new Error('Invalid encrypted data.');
   const b = Buffer.from(value, 'base64url');
+  if (b.length < 29) throw new Error('Invalid encrypted data.');
   const cipher = createDecipheriv('aes-256-gcm', key(), b.subarray(0, 12));
   cipher.setAuthTag(b.subarray(12, 28));
   return JSON.parse(

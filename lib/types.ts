@@ -1,4 +1,4 @@
-export type Platform = 'instagram' | 'tiktok';
+export type Platform = 'instagram' | 'tiktok' | 'snapchat';
 export type Profile = {
   id: string;
   user_id?: string;

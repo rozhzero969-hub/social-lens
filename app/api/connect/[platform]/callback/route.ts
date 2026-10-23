@@ -4,6 +4,7 @@ import { decrypt, encrypt } from '@/lib/crypto';
 import { exchangeCode, fetchSnapshot } from '@/lib/adapters';
 import { checked } from '@/lib/services';
 import { Platform } from '@/lib/types';
+import { validateOAuthState } from '@/lib/oauth-state';
 export async function GET(req: NextRequest, { params }: { params: Promise<{ platform: string }> }) {
   const { platform } = await params;
   const base = process.env.APP_URL || 'http://localhost:3000';
@@ -12,9 +13,11 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ plat
     if (!['instagram', 'tiktok'].includes(platform)) throw new Error('Unsupported platform');
     const cookie = req.cookies.get(`sl_oauth_${platform}`)?.value;
     if (!cookie) throw new Error('Connection session expired. Please try again.');
-    const s = decrypt<{ userId: string; state: string; issuedAt: number }>(cookie);
-    if (s.state !== req.nextUrl.searchParams.get('state') || Date.now() - s.issuedAt > 600000)
-      throw new Error('Connection session expired.');
+    const s = validateOAuthState(
+      decrypt(cookie),
+      platform as Platform,
+      req.nextUrl.searchParams.get('state'),
+    );
     const code = req.nextUrl.searchParams.get('code');
     if (!code || req.nextUrl.searchParams.has('error'))
       throw new Error('Authorization was not completed.');
@@ -66,6 +69,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ plat
     target = `/?connection=error&message=${encodeURIComponent(e instanceof Error ? e.message : 'Connection failed')}`;
   }
   const r = NextResponse.redirect(new URL(target, base));
+  r.headers.set('Cache-Control', 'no-store');
+  r.headers.set('Referrer-Policy', 'no-referrer');
   r.cookies.set(`sl_oauth_${platform}`, '', { maxAge: 0, path: `/api/connect/${platform}` });
   return r;
 }

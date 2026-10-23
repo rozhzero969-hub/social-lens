@@ -113,8 +113,8 @@ export default function AuthScreen({
             </span>
           </h1>
           <p>
-            A private home for your TikTok and Instagram profiles, saved content, and daily
-            perspective.
+            A private home for your TikTok, Instagram and Snapchat profiles, saved content, and
+            daily perspective.
           </p>
           <div className="auth-benefits">
             {[
